@@ -32,8 +32,17 @@ from openai import OpenAI
 # one is active.
 EMBEDDING_BACKEND = os.environ.get("EMBEDDING_BACKEND", "openai")
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 EMBED_MODEL = "text-embedding-3-small"  # cheap + solid quality
+
+_openai_embed_client = None  # lazy-init so importing this file doesn't require OPENAI_API_KEY to be set
+
+
+def _get_openai_embed_client():
+    global _openai_embed_client
+    if _openai_embed_client is None:
+        _openai_embed_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    return _openai_embed_client
+
 
 _local_model = None  # lazy-loaded so importing this file doesn't force a download
 
@@ -58,7 +67,7 @@ def embed_texts(texts: list[str]) -> np.ndarray:
         return vectors.astype("float32")
 
     # default: OpenAI API
-    response = client.embeddings.create(model=EMBED_MODEL, input=texts)
+    response = _get_openai_embed_client().embeddings.create(model=EMBED_MODEL, input=texts)
     vectors = [item.embedding for item in response.data]
     return np.array(vectors, dtype="float32")
 
